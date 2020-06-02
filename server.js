@@ -62,9 +62,15 @@ app.post('/update-profile', async(req, res) => {
 });
 
 
+app.post('/delete-account', async(req, res) => {
+
+});
+
+
 app.post('/add-money', async(req, res) => {
 
 });
+
 
 app.post('/pay-users', async(req, res) => {
 
@@ -84,7 +90,6 @@ app.post('/deliver-user-profile', async(req, res) => {
 
 /// Businesses:
 ///
-
 app.post('/create-business', async(req, res) => {
 
 });
@@ -115,9 +120,9 @@ app.post('/sell-product', async(req, res) => {
 });
 
 
-// app.post('/account-withdrawal', async(req, res) => {
+app.post('/account-withdrawal', async(req, res) => {
 
-// });
+});
 
 
 app.post('/display-customer-profiles', async(req, res) => {
@@ -128,6 +133,7 @@ app.post('/display-customer-profiles', async(req, res) => {
 app.post('/current-products', async(req, res) => {
 
 });
+
 
 http.createServer(app).listen(PORT, () => {
 	console.log(`Server listening on port ${PORT}`);
