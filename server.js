@@ -29,6 +29,8 @@ const stripe = require('stripe')('STRIPE_KEY');
 const http = require('http');
 const bodyParser = require('body-parser');
 const MongoClient = require('mongodb').MongoClient;
+// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
+
 
 let app = express();
 app.use(cors({origin: 'http://localhost:3000'}));
@@ -46,16 +48,15 @@ app.post('/create-user', async(req, res) => {
 	// Get user data.
 	let user = req.body.profile;
 
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("SMS-News").collection("Users - Active");
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect(err => {
+		const userData = databaseClient.db("SMS-News").collection("Users - Active");
 
-		collection.insertOne(user, (error, res) => {
+		userData.insertOne(user, (error, res) => {
 			if (error) throw error;
-			console.log("Successfully added new user!");
+			console.log("Successfully added new user.");
 		})
-		client.close();
+		databaseClient.close();
 	});
 });
 
@@ -64,55 +65,16 @@ app.post('/create-profile', async (req, res) => {
 	// 1. Associate user profile with authId and store in 'Profiles' section of db.
 	let profile = req.body.profile;
 
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Profiles - Active");
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect(err => {
+		const profileData = databaseClient.db("ShopByte").collection("Profiles - Active");
 
-		collection.insertOne(profile, (error, res) => {
+		profileData.insertOne(profile, (error, res) => {
 			if (error) throw error;
-			console.log("Successfully added new user!");
+			console.log("Successfully added new profile.");
 		})
-		client.close();
+		databaseClient.close();
 	});
-});
-
-
-app.post('/user-profile', async (req, res) => {
-	// Display user profile. 
-	// 1. Use authId to find profile in database and return it.
-	let authId = req.body.authId;
-	let profile;
-
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Profiles - Active");
-		// Get user data.
-		profile = collection.findOne({AuthId: authId}); // Get profile from db.
-		client.close();	
-	});
-	
-	return profile;
-});
-
-
-app.post('/update-profile', async (req, res) => {
-	
-	let authId = req.body.authId;
-	let updatedField = req.body.updatedField;
-	let profile;
-
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Profiles - Active");
-		// Get user data.
-		// profile = collection.findOneAndUpdate({AuthId: authId}); // how does this work??
-		client.close();	
-	});
-
-	return profile;
 });
 
 
@@ -136,21 +98,18 @@ app.post('/purchase-product', (req, res) => {
 });
 
 
-app.post('/deliver-user-profile', async (req, res) => {
-	let authId = req.body.authId;
+app.post('/get-user-profile', async (req, res) => {
+	const userId = req.body.userId;
 	let profile;
 
 	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Profiles - Active");
-		// Get user data.
-		// profile = collection.findOneAndUpdate({AuthId: authId}); // how does this work??
-		profile = collection.findOne({AuthId: authId});
-		client.close();	
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect(async (err) => {
+		const profileData = databaseClient.db("ShopByte").collection("Profiles - Active");
+		profile = await profileData.findOne({UserId: userId});
+		res.send(profile);
+		databaseClient.close();	
 	});
-
-	return profile;
 });
 
 
@@ -160,6 +119,7 @@ app.post('/deliver-user-profile', async (req, res) => {
 app.post('/create-business', async (req, res) => {
 	const business = await stripe.customers.create({
 		email: req.body.email,
+		phone: req.body.phone
 	}).catch((error) => {
 		console.log(`Server Error - Creating business failed: ${error}`);
 	})
@@ -173,38 +133,44 @@ app.post('/create-product', async (req, res) => {
 	// Check to make sure customer is active!
 	let product = req.body.product;
 	// Upload product with business that created it.
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Products");
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect((err) => {
+		const productData = databaseClient.db("ShopByte").collection("Products");
 		// Get user data.
-		// profile = collection.findOneAndUpdate({AuthId: authId}); // how does this work??
-		collection.insertOne(product, (error, res) => {
+		productData.insertOne(product, (error, res) => {
 			if (error) throw error;
 			console.log("Successfully added new product.");
 		})
-		client.close();	
+		databaseClient.close();	
 	});
-	
-
 });
 
 
 app.post('/update-product', async (req, res) => {
 	// Check to make sure customer is active!
-	let customerId = req.body.customerId;
-	let updatedField = req.body.updatedField;
-	let product;
+	const userId = req.body.userId;
+	const updatedField = req.body.updatedField;
+	const updatedValue = req.body.updatedValue
+	const productId = req.body.productId;
 
-	// const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("ShopByte").collection("Products");
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect((err) => {
+		const productData = databaseClient.db("ShopByte").collection("Products");
+		const userData = databaseClient.db("ShopByte").collection("Users - Active");
+
+		if (userData.findOne({UserId: userId})) {
+			// productData.findOneAndUpdate({CustomerId: customerId}, {$set: {${updatedField}: updatedValue}} (error) => {
+			// if (error) throw error;
+			// console.log("Updated user plan");
+			// });
+		} else {
+			console.log("Subscription not active, can't update products.");
+		}
+
 		// Get user data.
-		// product = collection.findOneAndUpdate({CustomerId: customerId}); // how does this work??
-		client.close();	
+		
+		databaseClient.close();	
 	});
-	return product;
 });
 
 
@@ -238,8 +204,8 @@ app.post('/create-business-subscription', async (req, res) => {
 	console.log("Success");
 
 	// Get user data.
-	let user = JSON.stringify({
-		AuthId: req.body.customerId.authId,
+	const user = JSON.stringify({
+		UserId: req.body.customerId.userId,
 		CustomerId: subscription.customer,
 		Preferences: "",
 		Phone: req.body.customerId.phone,
@@ -251,7 +217,7 @@ app.post('/create-business-subscription', async (req, res) => {
 		PriceId: req.body.customerId.priceId
 	});
 
-	let options = {
+	const options = {
 		hostname: 'localhost',
 		port: 3002,
 		path: '/create-user',
@@ -261,22 +227,6 @@ app.post('/create-business-subscription', async (req, res) => {
 			'Content-Length': user.length
 		}
 	};
-
-	// let request = http.request(options, (result) => {
-	// 	console.log('statusCode:', result.statusCode);
-  // 	console.log('headers:', result.headers);
-
-	// 	result.on('data', (d) => {
-	// 		process.stdout.write(d);
-	// 	});
-	// });
-
-	// request.on('error', (e) => {
-	// 	console.error(e);
-	// });
-	
-	// request.write(user);
-	// request.end();
 	httpRequest(options, user);
 
 	res.send(subscription);
@@ -287,37 +237,49 @@ app.post('/cancel-subscription', async (req, res) => {
 	// End user subscription -> move them to Inactive, end their plan (Stripe?)
 	// 1. Get user data from active users.
 	// 2. Get subscriptionId and cancel subscription. 
-	let user;
-	let authId = req.body.authId;
-	const uri = `mongodb+srv://${process.env.mongoUsername}:${process.env.mongoPassword}@sms-news-cluster-ta7l1.mongodb.net/test?retryWrites=true&w=majority`;
-	const client = new MongoClient(uri, { useNewUrlParser: true });
-	client.connect(err => {
-		const collection = client.db("SMS-News").collection("Users - Active");
+	// End user subscription -> move them to Inactive, end their plan (Stripe?)
+	// 1. Get user data from active users.
+	// 2. Get subscriptionId and cancel subscription. 
+	let userToUnsubscribe;
+	const userId = req.body.userId;
+
+	const databaseClient = new MongoClient(uri, { useNewUrlParser: true });
+	databaseClient.connect(async (err) => {
+		let userData = databaseClient.db("ShopByte").collection("Users - Active");
 		// Get user data.
-		user = collection.findOne({AuthId: authId}); // Get user from db.
-		let subscriptionId = user.SubscriptionId; // Get subId from user.
+		userToUnsubscribe = await userData.findOne({UserId: userId}); // Get user from db.
+		const subscriptionId = userToUnsubscribe.SubscriptionId; // Get subId from user.
 		stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
-		client.close();
+		// Move user from Active to Inactive
+		userData.findOneAndDelete({UserId: userId}); // User deleted.
+
+		// Add user to Inactive.
+		userData = databaseClient.db("ShopByte").collection("Users - Inactive");
+		userData.insertOne(userToUnsubscribe, (error, res) => {
+			if (error) throw error;
+			console.log("Successfully moved user to inactive.");
+		});
+		databaseClient.close();
 	});
 });
 
 
-app.post('/products-sold', async (req, res) => {
+app.post('/sell-product', async (req, res) => {
 	// How to handle selling product? Notify biz and release payment after sending item?
 });
 
 
-app.post('/account-withdrawal', async (req, res) => {
+app.post('/withdrawal-from-account', async (req, res) => {
 	// Allow company to withdrawal from their account to a connected bank account.
 });
 
 
-app.post('/customer-profiles', async (req, res) => {
+app.post('/get-customer-profiles', async (req, res) => {
 	// Return list of all the customer profiles from products sold
 });
 
 
-app.post('/deliver-current-products', async (req, res) => {
+app.post('/get-current-products', async (req, res) => {
 	// Return snapshot of current products for a business.
 });
 
